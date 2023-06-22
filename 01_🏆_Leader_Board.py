@@ -172,9 +172,9 @@ st.divider()
 color_scale = px.colors.sequential.Viridis
 
 
-fig_col1, fig_col2 = st.columns([0.5,0.5], gap="small")
+fig_col1, fig_col2 = st.columns(2, gap="small")
 with fig_col1:
-    st.markdown("#### Receiver Operating Characteristic")
+    st.subheader("Receiver Operating Characteristic")
     fig_roc = go.Figure()
     for i, model in enumerate(leaderboard_data):
         model_name = model['model_name']
@@ -192,19 +192,21 @@ with fig_col1:
             )
 
     fig_roc.update_yaxes(scaleanchor="x", scaleratio=1)
-    fig_roc.update_xaxes(constrain='domain')
+    fig_roc.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
     fig_roc.update_layout(
         xaxis=dict(title='False Positive Rate'),
         yaxis=dict(title='True Positive Rate'),
-        legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right",x=1,),
+        yaxis_range=[0,1],
+        xaxis_range=[0,1],
+        # legend=dict(orientation="h",yanchor="bottom",y=-1,xanchor="right",x=1,),
         margin=dict(l=10, r=10, t=30, b=10),
-        showlegend=True,
+        # showlegend=True,
     )
 
     st.plotly_chart(fig_roc, use_container_width=True)
 
 with fig_col2:
-    st.markdown("#### Precision Recall Curve")
+    st.subheader("Precision Recall Curve")
     fig_pr = go.Figure()
 
     max_rank = max(model['rank'] for model in leaderboard_data)
@@ -214,19 +216,29 @@ with fig_col2:
         precision, recall, thresholds_pr = find_metric(model_name, "precision_recall")
         rank = model['rank']
         c= len(leaderboard_data)-rank-1
-        fig_pr.add_trace(go.Scatter(x=recall, y=precision, name=model_name, mode='lines', line=dict(color=color_scale[c])))
+        fig_pr.add_trace(go.Scatter(x=recall, y=precision, name=model_name, legendgroup="group", mode='lines', line=dict(color=color_scale[c])))
 
     fig_pr.add_shape(
         type='line', line=dict(dash='dash', color='white'),
         x0=0, x1=1, y0=1, y1=0
     )
-    fig_pr.update_yaxes(scaleanchor="x", scaleratio=1)
+    fig_pr.update_yaxes(scaleanchor="x", scaleratio=1,)
     fig_pr.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
     fig_pr.update_layout(
         xaxis=dict(title='Recall'),
         yaxis=dict(title='Precision'),
-        legend=dict(orientation='h', yanchor="bottom", y=1.02, xanchor="right", x=1, ),
+        yaxis_range=[0,1],
+        xaxis_range=[0,1],
+        # legend=dict(orientation="v",
+        #             entrywidth=70,
+        #             yanchor="bottom",
+        #             y=1.02,
+        #             xanchor="right",
+        #             x=1),
+        # legend=dict(orientation='h', yanchor="bottom", y=1.02, xanchor="right", x=1, ),
         margin=dict(l=10, r=10, t=30, b=10),
+        # showlegend=True,
+
     )
 
     st.plotly_chart(fig_pr, use_container_width=True)
