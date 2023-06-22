@@ -191,7 +191,7 @@ with fig_col1:
             line=dict(color=color_scale[c])
             )
 
-    fig_roc.update_yaxes(scaleanchor="x", scaleratio=1)
+    fig_roc.update_yaxes(constrain='domain',scaleanchor="x", scaleratio=1)
     fig_roc.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
     fig_roc.update_layout(
         xaxis=dict(title='False Positive Rate'),
@@ -216,13 +216,13 @@ with fig_col2:
         precision, recall, thresholds_pr = find_metric(model_name, "precision_recall")
         rank = model['rank']
         c= len(leaderboard_data)-rank-1
-        fig_pr.add_trace(go.Scatter(x=recall, y=precision, name=model_name, legendgroup="group", mode='lines', line=dict(color=color_scale[c])))
+        fig_pr.add_trace(go.Scatter(x=recall, y=precision, name=model_name, mode='lines', line=dict(color=color_scale[c])))
 
     fig_pr.add_shape(
         type='line', line=dict(dash='dash', color='white'),
         x0=0, x1=1, y0=1, y1=0
     )
-    fig_pr.update_yaxes(scaleanchor="x", scaleratio=1,)
+    fig_pr.update_yaxes(constrain='domain',scaleanchor="x", scaleratio=1,)
     fig_pr.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
     fig_pr.update_layout(
         xaxis=dict(title='Recall'),
