@@ -1,159 +1,249 @@
-from shared_functions import st, np, pd, df, leaderboard_data, df_mapping, find_metric
+from shared_functions import st, np, pd, df, table_data,leaderboard_data, df_mapping, find_metric
 import plotly.express as px  # interactive charts
 import plotly.graph_objects as go
-import plotly.figure_factory as ff
+import plotly.subplots as sp
+import plotly.io as pio
 import seaborn as sns
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 from matplotlib.colors import Normalize
 from datetime import datetime, timedelta
 
+# page config -> needs to come first for app
+# values in HTML tags
+st.set_page_config(
+    page_title="J3 Dashboard",
+    page_icon="✅",
+    layout="wide",
+)
+
+st.session_state['df'] = df
+st.session_state['leaderboard_data'] = leaderboard_data
 
 # Dashboard settings
-st.title("Monitor your model and get closer to Utopia ...")
-with st.sidebar:
-    st.header('Filters', anchor=None)
-    selected_df = st.selectbox('Select your ML Model', list(df_mapping.keys()),key="<uniqueSelect>" )
-
-    # creating single element container so dash updated realtime
+st.title("What's at Play?")
 placeholder = st.empty()
 
-
-cost = find_metric(selected_df,"cost")
-cf_matrix = find_metric(selected_df,"cf_matrix")
-fpr, tpr, thresholds_roc = find_metric(selected_df,"roc")
-auc = find_metric(selected_df,"auc")
-precision, recall, thresholds_pr = find_metric(selected_df,"precision_recall")
-acur_score = find_metric(selected_df,"accuracy_score")
-cali_curve_x, cali_curve_y = find_metric(selected_df,"calibration_curve")
-rank = find_metric(selected_df,"rank")
-f1 = find_metric(selected_df,"f1_score")
-cost_credit_ratio = find_metric(selected_df,"cost_credit_ratio")
-errors = find_metric(selected_df,"count_errors")
-cost_FN = find_metric(selected_df,"cost_FN")
-cost_FP = find_metric(selected_df,"cost_FP")
-
-
-# creating dashboard componenets
 with placeholder.container():
-    kpi4, kpi5, kpi6, kpi7= st.columns(4)
-    kpi4.metric(
-        value=f"{rank}",
-        label="Model Rank :trophy:",
+
+    # create three columns
+    kpi1, kpi2, kpi3= st.columns(3)
+    #kpi1.subheader("Models :bank:")
+    kpi1.metric(
+        label="Models :bank:",
+        value=len(leaderboard_data)-2,
     )
-    kpi5.metric(
-        label="Errors :no_entry:",
-        value=f"{errors}",
+    #kpi2.subheader("Loan requests :money_mouth_face:")
+    kpi2.metric(
+        label="Loan requests :money_mouth_face:",
+        value=df.shape[0],
     )
-    kpi6.metric(
-        label="Cost/Credit Ratio :scales:",
-        value=f"{abs(cost_credit_ratio):,.2f}%",
-    )
-    kpi7.metric(
-        label="Cost :money_with_wings:",
-        value=f"$ {abs(cost):,.0f}",
+    #kpi3.subheader("Requested credit ＄")
+    tot_credit = np.sum(df["AMT_CREDIT"])
+    kpi3.metric(
+        label="Requested credit ＄",
+        value= f"$ {tot_credit:,.0f} ",
     )
 
     st.divider()
 
-    kpi7, kpi8, kpi9= st.columns(3)
-    kpi7.metric(
-        label="AUC",
-        value=f"{auc:,.2f}",
-    )
-    kpi8.metric(
-        label="Accuracy Score :dart:",
-        value=f"{acur_score:,.2f}",
-    )
-    kpi9.metric(
-        label="F1 score",
-        value=f"{f1:,.2f}",
-    )
-    st.divider()
+    st.subheader("Credit & Cost moving average")
 
-    fig_col1, fig_col2 = st.columns(2)
-    with fig_col1:
-        st.markdown("#### Confusion Matrix")
-        fig_cm = go.Figure()
-        group_names = ['True Negative','False Positive','False Negative','True Positive']
-        group_counts = ["{0:,.0f}".format(value) for value in cf_matrix.flatten()]
-        group_percentages = ["{0:.0%}".format(value) for value in cf_matrix.flatten()/np.sum(cf_matrix)]
-        group_costs = [0,cost_FP,cost_FN,0]
-        labels = [f"{v1}<br>{v2}<br>{v3}<br><br>Cost: $ {abs(v4):,.0f}" for v1, v2, v3, v4 in zip(group_names,group_counts,group_percentages, group_costs)]
-        labels = np.asarray(labels).reshape(2,2)
-        sns.heatmap(cf_matrix/np.sum(cf_matrix), annot=labels, fmt='', cmap='Blues')
-        fig_cm = ff.create_annotated_heatmap(
-            z=cf_matrix / np.sum(cf_matrix),
-            annotation_text=labels,
-            colorscale='Blues',
-        )
-        fig_cm.update_layout(
-            xaxis=dict(title='Predicted',side='top'),
-            yaxis=dict(title='True'),
-            margin=dict(l=0, r=0, t=0, b=0),
-            width=500,
-            height=500
-        )
-        fig_cm.update_yaxes(scaleanchor="x", scaleratio=1)
-        # fig.update_xaxes(constrain='domain')
-        st.write(fig_cm)
+    # window_size = st.slider("Choose moving average window", min_value=1, max_value=100, step=1)
 
-    with fig_col2:
-        st.markdown("#### Precision Recall Curve")
-        fig_pr = go.Figure()
-        fig_pr.add_trace(go.Scatter(x=recall, y=precision, mode='lines'))
-        fig_pr.add_shape(
-            type='line', line=dict(dash='dash', color='white'),
-            x0=0, x1=1, y0=1, y1=0
-        )
-        fig_pr.update_yaxes(scaleanchor="x", scaleratio=1)
-        fig_pr.update_xaxes(constrain='domain')
-        fig_pr.update_layout(
-            xaxis=dict(title='Recall'),
-            yaxis=dict(title='Precision'),
-            margin=dict(l=0, r=0, t=0, b=0),
-            width=500,
-            height=500
-        )
-        st.write(fig_pr)
+    # df['AMT_CREDIT_MA'] = df['AMT_CREDIT'].rolling(window=window_size, min_periods=1).mean()
+    # df['COST_MA'] = -1*df['COST'].rolling(window=window_size, min_periods=1).mean()
+    # df['RATIO_CC_MA'] = -1*df['RATIO_CC'].rolling(window=window_size, min_periods=1).mean()
 
-    fig_col1, fig_col2 = st.columns(2)
-    with fig_col1:
-        st.markdown("#### Receiver Operating Characteristic")
-        fig_roc = go.Figure()
+    # fig = sp.make_subplots(specs=[[{"secondary_y": True}]])
+
+    # # Add AMT_CREDIT line
+    # fig.add_trace(go.Scatter(x=df['timestamp'], y=df['AMT_CREDIT_MA'], mode='lines',line_shape='spline', name='AMT_CREDIT Moving Average'), secondary_y=False)
+
+    # # Add COST line
+    # fig.add_trace(go.Scatter(x=df['timestamp'], y=df['COST_MA'], mode='lines', name='COST Moving Average'), secondary_y=False)
+
+    # # Add RATIO_CC line on the right-hand axis
+    # fig.add_trace(go.Scatter(x=df['timestamp'], y=df['RATIO_CC_MA'], mode='lines', name='RATIO_CC Moving Average'), secondary_y=True)
+
+    # # Set layout options
+    # fig.update_layout(
+    #     xaxis=dict(
+    #         tickformat='%Y-%m-%d %H:%M:%S',
+    #         tickangle=45,
+    #         showticklabels=True,
+    #         title='Timestamp',
+    #     ),
+    #     legend=dict(orientation="h",yanchor="bottom",y=1.02,xanchor="right",x=1),
+    #     height=600,
+    #     margin=dict(l=20, r=20, t=1, b=20),
+    # )
+
+    # # Set the y-axis titles
+    # fig.update_yaxes(title_text='$ Credit or Cost', secondary_y=False)
+    # fig.update_yaxes(title_text='Ratio cost/credit', secondary_y=True)
+
+    # st.plotly_chart(fig, use_container_width=True, width='100%', height='1200px')
+
+    # st.header("🏇 The Race To ML Model Utopia 🚀", anchor=None)
+    # st.write(show_leaderboard(leaderboard_data))
+
+
+    df = df.sort_values('timestamp')
+    df.set_index('timestamp', inplace=True)
+
+    window_size = st.slider("Choose moving average window", min_value=1, max_value=48, step=1)
+
+    window_size_offset = f'{window_size}H'
+    df['AMT_CREDIT_MA'] = df['AMT_CREDIT'].rolling(window=window_size_offset, min_periods=1).mean()
+    df['COST_MA'] = -1 * df['COST'].rolling(window=window_size_offset, min_periods=1).mean()
+    df['RATIO_CC_MA'] = -1*df['RATIO_CC'].rolling(window=window_size_offset, min_periods=1).mean()
+
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(x=df.index, y=df['AMT_CREDIT_MA'], mode='lines', line_shape='spline', name='AMT_CREDIT Moving Average'))
+    fig.add_trace(go.Scatter(x=df.index, y=df['COST_MA'], mode='lines',line_shape='spline', name='COST Moving Average'))
+    fig.add_trace(go.Scatter(x=df.index, y=df['RATIO_CC_MA'], mode='lines',line_shape='spline', name='RATIO_CC Moving Average', yaxis='y2'))
+
+    for i, model in enumerate(leaderboard_data):
+        model_name = model['model_name']
+        if model_name not in ['Random Assignment', 'Utopia']:
+            min_ts = find_metric(model_name,"start")
+            fig.add_shape(
+                type="line",
+                x0=min_ts,
+                y0=min(df[['AMT_CREDIT_MA', 'COST_MA']].min()),
+                x1=min_ts,
+                y1=max(df[['AMT_CREDIT_MA', 'COST_MA']].max()),
+                line=dict(color="red", width=1),
+                xref="x",
+                yref="y",
+            )
+            fig.add_annotation(
+                x=min_ts,
+                y=max(df[['AMT_CREDIT_MA', 'COST_MA']].max()),
+                text=f'{model_name}',
+                showarrow=True,
+                arrowhead=1,
+                ax=0,
+                ay=-40,
+                xref="x",
+                yref="y",
+                font=dict(color="red", size=12),
+            )
+
+    fig.update_layout(
+        xaxis=dict(
+            tickformat='%Y-%m-%d %H:%M:%S',
+            tickangle=45,
+            showticklabels=True,
+            title='Timestamp',
+        ),
+        yaxis=dict(
+            title='$ Credit or Cost'
+        ),
+        yaxis2=dict(
+            title='% Ratio cost/credit',
+            overlaying='y',
+            side='right',
+            griddash='dot',
+            gridwidth=1,
+            tickformat='.0%',
+        ),
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=0.75),
+        height=600,
+        width=500,
+        margin=dict(l=20, r=20, t=1, b=20),
+    )
+
+    st.plotly_chart(fig, use_container_width=True, width='500', height='600')
+
+
+
+st.header("Model details :1234:", anchor=None)
+st.dataframe(
+    pd.DataFrame(table_data),
+    use_container_width=True,
+)
+
+st.divider()
+
+color_scale = px.colors.sequential.Viridis
+
+
+fig_col1, fig_col2 = st.columns(2, gap="small")
+with fig_col1:
+    st.subheader("Receiver Operating Characteristic")
+    fig_roc = go.Figure()
+    for i, model in enumerate(leaderboard_data):
+        model_name = model['model_name']
+        fpr, tpr, thresholds_roc = find_metric(model_name,"roc")
+        auc = find_metric(model_name,"auc")
+        max_rank = max(model['rank'] for model in leaderboard_data)
+        rank = model['rank']
+        c= len(leaderboard_data)-rank-1
         fig_roc.add_scatter(
             x=fpr,
             y=tpr,
             mode='lines',
-            name=f'AUC: {auc:.2f}',
-            line=dict(color='rgb(0, 118, 189)')
-        )
+            name=f' {model_name} - AUC: {auc:.2f}',
+            line=dict(color=color_scale[c])
+            )
 
-        fig_roc.update_layout(
-            xaxis=dict(title='False Positive Rate'),
-            yaxis=dict(title='True Positive Rate'),
-            legend=dict(x=0.75, y=0.15, bgcolor='rgba(0, 0,0, 0)'),
-            margin=dict(l=20, r=20, t=30, b=10),
-            showlegend=True,
-            width=500,
-            height=500
-        )
+    fig_roc.update_yaxes(constrain='domain',scaleanchor="x", scaleratio=1)
+    fig_roc.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
+    fig_roc.update_layout(
+        xaxis=dict(title='False Positive Rate'),
+        yaxis=dict(title='True Positive Rate'),
+        yaxis_range=[0,1],
+        xaxis_range=[0,1],
+        # legend=dict(orientation="h",yanchor="bottom",y=-1,xanchor="right",x=1,),
+        margin=dict(l=10, r=10, t=30, b=10),
+        # showlegend=True,
+    )
 
-        st.plotly_chart(fig_roc)
+    st.plotly_chart(fig_roc, use_container_width=True)
 
-    with fig_col2:
-        st.markdown("#### Calibration Curve")
-        fig_calib = go.Figure()
-        fig_calib.add_trace(go.Scatter(x=[0, 1], y=[0, 1], mode='lines', name='Ideally Calibrated',line=dict(dash='dash', color='white') ))
-        fig_calib.add_trace(go.Scatter(x=cali_curve_x, y=cali_curve_y, mode='lines', name='Model'))
+with fig_col2:
+    st.subheader("Precision Recall Curve")
+    fig_pr = go.Figure()
 
-        fig_calib.update_layout(
-            xaxis=dict(title='Average Predicted Probability in each bin'),
-            yaxis=dict(title='Ratio of Positives'),
-            legend=dict(x=0.75, y=0.15, bgcolor='rgba(0,0,0,0)'),
-            margin=dict(l=20, r=20, t=30, b=10),
-            width=500,
-            height=500
-        )
+    max_rank = max(model['rank'] for model in leaderboard_data)
 
-        st.plotly_chart(fig_calib)
+    for i, model in enumerate(leaderboard_data):
+        model_name = model['model_name']
+        precision, recall, thresholds_pr = find_metric(model_name, "precision_recall")
+        rank = model['rank']
+        c= len(leaderboard_data)-rank-1
+        fig_pr.add_trace(go.Scatter(x=recall, y=precision, name=model_name, mode='lines', line=dict(color=color_scale[c])))
+
+    fig_pr.add_shape(
+        type='line', line=dict(dash='dash', color='white'),
+        x0=0, x1=1, y0=1, y1=0
+    )
+    fig_pr.update_yaxes(constrain='domain',scaleanchor="x", scaleratio=1,)
+    fig_pr.update_xaxes(constrain='domain',scaleanchor="x",scaleratio=1)
+    fig_pr.update_layout(
+        xaxis=dict(title='Recall'),
+        yaxis=dict(title='Precision'),
+        yaxis_range=[0,1],
+        xaxis_range=[0,1],
+        # legend=dict(orientation="v",
+        #             entrywidth=70,
+        #             yanchor="bottom",
+        #             y=1.02,
+        #             xanchor="right",
+        #             x=1),
+        # legend=dict(orientation='h', yanchor="bottom", y=1.02, xanchor="right", x=1, ),
+        margin=dict(l=10, r=10, t=30, b=10),
+        # showlegend=True,
+
+    )
+
+    st.plotly_chart(fig_pr, use_container_width=True)
+
+
+
+
+
