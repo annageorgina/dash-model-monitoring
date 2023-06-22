@@ -11,7 +11,11 @@ from datetime import datetime, timedelta
 
 # page config -> needs to come first for app
 # values in HTML tags
-
+st.set_page_config(
+    page_title="J3 Dashboard",
+    page_icon="✅",
+    layout="wide",
+)
 
 st.session_state['df'] = df
 st.session_state['leaderboard_data'] = leaderboard_data
