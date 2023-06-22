@@ -42,7 +42,7 @@ with placeholder.container():
         label="Model Rank :trophy:",
     )
     kpi5.metric(
-        label="Errors :dart:",
+        label="Errors :no_entry:",
         value=f"{errors}",
     )
     kpi6.metric(
