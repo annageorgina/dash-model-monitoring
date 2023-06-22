@@ -8,6 +8,12 @@ import matplotlib as mpl
 from matplotlib.colors import Normalize
 from datetime import datetime, timedelta
 
+st.set_page_config(
+    page_title="J3 Dashboard",
+    page_icon="✅",
+    layout="wide",
+)
+
 # Dashboard settings
 st.title("Monitor your model and get closer to Utopia ...")
 with st.sidebar:
