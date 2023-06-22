@@ -30,11 +30,6 @@ response = requests.request("GET", url, headers=headers, data=payload)
 df = pd.read_csv(StringIO(response.text))
 
 
-st.set_page_config(
-    page_title="J3 Dashboard",
-    page_icon="✅",
-    layout="wide",
-)
 
 # @st.cache_data # decorator runs function once and caches data - avoids downloading dataset again & again
 def get_data() -> pd.DataFrame:
